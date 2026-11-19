@@ -1,18 +1,18 @@
-"""Small helpers that keep the free tier from ending your evening."""
+"""Rate-limit retry and reply-text helpers."""
 import time
 
 
 def retry(fn, *args, tries=8, base=15, **kwargs):
-    """Call fn, and when the API says you are over the rate limit, wait and
-    try again. Every model call in this assignment should go through here.
+    """Call fn, and when the API reports a rate limit, wait and try again.
+    Every model call goes through here.
 
         order = retry(ranker.invoke, prompt)
 
     The free tier has two separate limits and they need opposite responses.
-    The per-minute one (15) clears by itself, so we wait it out. The per-day
-    one (500) does not clear until tomorrow, so backing off eight times just
-    wastes nine minutes before failing anyway. We tell them apart and say
-    which one you hit.
+    The per-minute one (15) clears by itself, so this waits it out. The
+    per-day one (500) does not clear until tomorrow, so backing off eight
+    times would just waste nine minutes before failing anyway. This tells
+    them apart and raises a message saying which one was hit.
     """
     for attempt in range(tries):
         try:
@@ -25,8 +25,7 @@ def retry(fn, *args, tries=8, base=15, **kwargs):
             if "PerDay" in message:
                 raise RuntimeError(
                     "You have used the 500 requests a day on the Gemini free "
-                    "tier. Waiting will not help; this resets tomorrow. Score "
-                    "fewer questions, or a few strategies at a time."
+                    "tier. Waiting will not help; this resets tomorrow."
                 ) from e
             time.sleep(base * (attempt + 1))
     raise RuntimeError(
@@ -41,7 +40,7 @@ def text_of(message):
 
     Newer Gemini models return .content as a list of content blocks rather
     than a string, so anything that treats .content as text breaks on them.
-    Everything in this assignment that reads a reply goes through here.
+    Everything that reads a reply goes through here.
     """
     content = getattr(message, "content", message)
     if isinstance(content, str):

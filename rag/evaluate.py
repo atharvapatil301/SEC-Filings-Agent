@@ -1,15 +1,14 @@
-"""Scoring. None of this is a TODO.
+"""Scoring.
 
-Every strategy you write in notebook 02 has the same shape:
+Every retrieval strategy has the same shape:
 
     search(question, k) -> [(source_file, passage_text), ...]   best first
 
-That is the whole contract, and it is what makes the comparison in notebook
-04 fair. Two strategies that return different things cannot be compared, so
-if you find yourself wanting to change the contract, change it for all of
-them.
+That is the whole contract, and it is what makes the comparison fair. Two
+strategies that return different things cannot be compared, so a change to
+the contract has to apply to all of them.
 
-We score two things about retrieval and one thing about the answer.
+I score two things about retrieval and one thing about the answer.
 
   recall@k   Of the files that genuinely answer this question, how many
              turned up in the top k? This is the metric that matters most,
@@ -18,12 +17,11 @@ We score two things about retrieval and one thing about the answer.
 
   MRR        How high up was the first genuinely relevant file? Recall says
              the evidence was in the list; MRR says whether it was at the top
-             of it. Reranking is supposed to move MRR without moving recall,
-             and in notebook 02 you will see exactly that.
+             of it. Reranking is supposed to move MRR without moving recall.
 
   answer     Did the final answer actually say the right thing? Retrieval
              metrics can both look good while the answer is still wrong, so
-             notebook 04 checks the end of the pipeline too.
+             the end of the pipeline is checked too.
 """
 import json
 import os
@@ -33,8 +31,9 @@ from .util import retry, text_of
 
 
 def load_evalset(which="specific"):
-    """which is "specific" or "comparative". See notebook 02 for why there
-    are two sets and why they disagree about which strategy is best."""
+    """which is "specific" (one company and year per question) or
+    "comparative" (several companies or years). The two sets disagree about
+    which strategy is best, which is why both exist."""
     name = {"specific": "evalset.json", "comparative": "evalset_hard.json"}[which]
     with open(os.path.join(config.EVAL_DIR, name)) as f:
         return json.load(f)
@@ -111,8 +110,8 @@ Reply with one word, CORRECT or INCORRECT, then one sentence of reason."""
 
 def judge_answer(question, answer, model=None):
     """A model grading another model. Cheap, and good enough to catch the
-    cases where retrieval looked fine and the answer still went wrong. Read a
-    handful of its verdicts yourself before you trust the average."""
+    cases where retrieval looked fine and the answer still went wrong. Its
+    verdicts are worth spot-checking by hand before trusting the average."""
     model = model or config.chat()
     verdict = retry(model.invoke, JUDGE_PROMPT.format(question=question, answer=answer))
     text = text_of(verdict).strip()
@@ -141,10 +140,10 @@ def score_agent(run, items, model=None, pause=4.0):
     """End to end, with the bill.
 
     run(question) must return the agent's final state: a dict with "answer",
-    "chat_calls" and "decision_calls". Both agents in this assignment do.
+    "chat_calls" and "decision_calls". Both agents here do.
 
     Accuracy comes from the judge. The other three columns are what the
-    answer cost: chat-model calls (the ones that count against your Gemini
+    answer cost: chat-model calls (the ones that count against the Gemini
     quota), decision-model calls, and seconds.
     """
     import time

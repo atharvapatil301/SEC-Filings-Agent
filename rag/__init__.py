@@ -1,8 +1,11 @@
-"""DADA2 (diagnosis version) — an agentic RAG system over SEC filings.
+"""An agentic RAG system over SEC 10-K filings.
 
-    config      settings, given
-    evaluate    metrics and the comparison table, given
-    decide      the decision model, given
-    retrieval   notebook 02: the retrieval strategies
-    agent       notebook 03: the router, the diagnosis, and the graph
+    config      settings: models, chunking, k, index name
+    embed       Cloudflare Workers AI embeddings
+    decide      the decision model: scope() and diagnose()
+    retrieval   the five retrieval strategies
+    agent       the router, the diagnosis, the graph, and the deployed agent
+    ladder      the fixed-escalation baseline agent
+    evaluate    retrieval metrics, the LLM judge, and agent comparison
+    util        rate-limit retry and reply text extraction
 """

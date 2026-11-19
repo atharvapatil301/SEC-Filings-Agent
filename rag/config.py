@@ -1,9 +1,4 @@
-"""Settings every other module reads.
 
-Nothing here is a TODO. Change a value if you have a reason to, but write the
-reason down in notebook 04, because changing two things at once is how an
-ablation study stops meaning anything.
-"""
 import os
 from dotenv import load_dotenv
 
@@ -13,15 +8,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def _find_bundle(start):
-    """Walk up until we find the folder holding corpus/manifest.csv, so these
-    modules keep working if you move them or run them from somewhere else."""
+    """Walk up until it finds the folder holding corpus/manifest.csv, so these
+    modules keep working when they are moved or run from somewhere else."""
     here = start
     for _ in range(5):
-        for candidate in (here, os.path.join(here, "student_bundle")):
-            has_corpus = os.path.exists(os.path.join(candidate, "corpus", "manifest.csv"))
-            has_eval = os.path.isdir(os.path.join(candidate, "eval"))
-            if has_corpus and has_eval:     # a corpus copy alone is not the bundle
-                return candidate
+        has_corpus = os.path.exists(os.path.join(here, "corpus", "manifest.csv"))
+        has_eval = os.path.isdir(os.path.join(here, "eval"))
+        if has_corpus and has_eval:     # a corpus copy alone is not the project root
+            return here
         here = os.path.dirname(here)
     return os.path.dirname(start)
 
@@ -33,7 +27,7 @@ FINANCIALS = os.path.join(CORPUS, "financials")
 MANIFEST = os.path.join(CORPUS, "manifest.csv")
 EVAL_DIR = os.path.join(BUNDLE, "eval")
 
-# Chunking. These are the values the reference solution used.
+# Chunking. 1,200 characters with 150 overlap gives 2,124 chunks.
 CHUNK_SIZE = 1200
 CHUNK_OVERLAP = 150
 
@@ -46,7 +40,7 @@ CHUNK_OVERLAP = 150
 #               deployed app uses it too. 1024 dimensions.
 #   ollama      the same model, local. The backup. Its vectors match
 #               Cloudflare's, so it reads and writes the same index.
-#   gemini      models/gemini-embedding-001, the lecture model. 3072
+#   gemini      models/gemini-embedding-001. 3072
 #               dimensions. The free tier allows 1,000 embeddings a day, and
 #               this corpus is 2,124 chunks, so indexing with it needs the
 #               paid tier. Fine for embedding questions.
@@ -83,14 +77,13 @@ def embeddings():
 
 def index_name(dim):
     """Vectors from two embedding models cannot share an index, so the
-    dimension goes in the name and the mistake becomes impossible. If you
-    named your index something else, put INDEX_NAME in .env and every
-    notebook and the app will use that instead."""
+    dimension goes in the name and the mistake becomes impossible. Set
+    INDEX_NAME in .env to use an index with a different name."""
     return os.getenv("INDEX_NAME") or f"dada2-{dim}"
 
 
 # For local testing without spending the Gemini quota: CHAT_BACKEND=ollama in
-# .env runs the chat model through Ollama instead. Not for students.
+# .env runs the chat model through Ollama instead.
 CHAT_BACKEND = os.getenv("CHAT_BACKEND", "gemini")
 OLLAMA_CHAT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "qwen3.5:latest")
 
@@ -105,7 +98,7 @@ def chat():
     return ChatGoogleGenerativeAI(model=CHAT_MODEL)
 
 
-# Cloudflare Workers AI, for the decision model in notebook 03. Both come from
+# Cloudflare Workers AI, for the decision model. Both come from
 # the Cloudflare dashboard. The token needs the Workers AI permission.
 CF_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID")
 CF_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN") or os.getenv("CLOUDFLARE_API_KEY")

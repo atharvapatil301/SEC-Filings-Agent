@@ -1,7 +1,4 @@
-"""Notebook 03: the agent. A decision model routes and judges, a chat model writes.
-
-Notebook 03 walks through this. Write there first, then move it in here;
-app.py and notebook 04 import from this file.
+"""The diagnosis agent: a decision model routes and judges, a chat model writes.
 
     route (decision) -+-> lookup (figure questions, the financials file) -> answer
                       +-> retrieve -> diagnose (decision) -> decide
@@ -21,9 +18,9 @@ from .util import retry, text_of
 
 MAX_ATTEMPTS = 3
 
-# What each kind of question starts with. Measured in notebook 04 of the
-# ladder version: the filter wins on specific questions and loses on
-# comparative ones, where hybrid wins.
+# What each kind of question starts with. Measured in the retrieval
+# comparison: the filter wins on specific questions and loses on comparative
+# ones, where hybrid wins.
 START_WITH = {"specific": "filter", "comparative": "hybrid+rrf", "figure": "filter"}
 DEFAULT = "filter+rrf"            # when the router is not sure
 SURE = 0.6                        # below this, use DEFAULT
@@ -32,7 +29,7 @@ SURE = 0.6                        # below this, use DEFAULT
 STRONGER = {"filter": "filter+rrf", "hybrid+rrf": "filter+rrf+rerank",
             "filter+rrf": "filter+rrf+rerank"}
 
-# absent is a judgment, and the model can be unsure of it. Below this we
+# absent is a judgment, and the model can be unsure of it. Below this I
 # give it one more search before taking its word.
 ABSENT_SURE = 0.8
 
@@ -79,14 +76,10 @@ class RetrievalState(TypedDict, total=False):
 def route(state: RetrievalState) -> dict:
     """One decision-model call. Which kind of question, and so which search.
 
-    TODO 3.1 (1 pt), with after_route.
-
-    decide.scope gives you a choice and its probabilities. Use START_WITH for
-    the choice, unless the model is not sure, in which case use DEFAULT. SURE
-    is the line. Count the call: return decision_calls as 1.
+    decide.scope returns a choice and its probabilities. The strategy comes
+    from START_WITH for that choice, or DEFAULT when the top probability is
+    below SURE. Counts one decision call.
     """
-    # TODO 3.1
-    # your code here
     scope, probs  = decision.scope(state["question"])
     strategy=""
     if probs[scope] >= SURE:
@@ -103,8 +96,6 @@ def route(state: RetrievalState) -> dict:
 
 def after_route(state: RetrievalState) -> Literal["lookup", "retrieve"]:
     """Figure questions do not go to retrieval at all."""
-    # TODO 3.1
-    # your code here
     return "lookup" if state["scope"] == "figure" else "retrieve"
 
 class Fact(BaseModel):
@@ -139,14 +130,10 @@ def lookup(state: RetrievalState) -> dict:
     """A number is in the financials file, not in the prose. One chat call
     to name the figure, then a plain dictionary lookup.
 
-    TODO 3.2 (1 pt)
-
-    Ask the chat model for a Fact, call financial_fact with it, and return the
-    table as the one document, with the verdict already sufficient so the
-    graph goes straight to answer. attempts 1, chat_calls 1.
+    The chat model names a Fact, financial_fact reads it, and the table is
+    returned as the one document with the verdict already sufficient, so the
+    graph goes straight to answer. Counts one attempt and one chat call.
     """
-    # TODO 3.2
-    # your code here
     namer = config.chat().with_structured_output(Fact)
     fact = retry(namer.invoke, FACT_PROMPT.format(question=state["question"]))
     table = financial_fact(fact.ticker, fact.concept)
@@ -166,16 +153,11 @@ def retrieve(state: RetrievalState) -> dict:
 def diagnose(state: RetrievalState) -> dict:
     """One decision-model call. Enough, or why not.
 
-    TODO 3.3 (2 pts), with decide.
-
-    decide.diagnose gives you the verdict and its probabilities. One thing to
-    handle: absent is a judgment, and the model can be unsure of it. If it
-    says absent with a probability under ABSENT_SURE and there are attempts
-    left, call it wrong_words instead and let the graph search once more.
-    Count the call.
+    decide.diagnose returns the verdict and its probabilities. absent is a
+    judgment, and the model can be unsure of it: an absent below ABSENT_SURE,
+    with attempts left, is treated as wrong_words so the graph searches once
+    more. Counts one decision call.
     """
-    # TODO 3.3
-    # your code here
     verdict, probs = decision.diagnose(state["question"], state["documents"])
     
     if (verdict == "absent" and probs["absent"] < ABSENT_SURE
@@ -187,8 +169,6 @@ def decide(state: RetrievalState) -> Literal["answer", "stronger", "plan"]:
     """Every verdict has one place to go. sufficient and absent both stop.
     incomplete needs a plan. wrong_words needs a stronger search, unless there
     is none left. And the attempt cap stops everything."""
-    # TODO 3.3
-    # your code here
     if state.get("attempts", 0) >= MAX_ATTEMPTS:
         return "answer"
     if state["verdict"] == "incomplete":
@@ -199,11 +179,7 @@ def decide(state: RetrievalState) -> Literal["answer", "stronger", "plan"]:
 
 def stronger(state: RetrievalState) -> dict:
     """Same question, the next search up. STRONGER says which.
-
-    TODO 3.4 (2 pts), with plan, execute and build_graph.
     """
-    # TODO 3.4
-    # your code here
     return {"strategy": STRONGER[state["strategy"]]}
 
 class Plan(BaseModel):
@@ -229,8 +205,6 @@ def plan(state: RetrievalState) -> dict:
     planner does not ask for it again. The sources of the documents in state
     are enough for that.
     """
-    # TODO 3.4
-    # your code here
     planner = config.chat().with_structured_output(Plan)
     sources = sorted({source for source, _ in state.get("documents") or []})
     covered = ", ".join(sources) or "nothing"
@@ -240,11 +214,9 @@ def plan(state: RetrievalState) -> dict:
 def execute(state: RetrievalState) -> dict:
     """One filtered search per step. The filter extractor is a chat call each.
 
-    Append only passages you do not already have. documents has an add
-    reducer, so return the new ones and the graph does the appending.
+    Returns only passages not already in the state. documents has an add
+    reducer, so the graph does the appending.
     """
-    # TODO 3.4
-    # your code here
     seen = set(state.get("documents") or [])
     new = []
     for step in state["steps"]:
@@ -275,12 +247,10 @@ def answer(state: RetrievalState) -> dict:
 
 
 def build_graph():
-    """Wire it as the diagram at the top of notebook 03 shows. decide and
-    after_route return Literals, which declare their edges."""
+    """The retrieval graph. decide and after_route return Literals, which
+    declare their conditional edges."""
     from langgraph.graph import StateGraph, START, END
 
-    # TODO 3.4
-    # your code here
     agent = StateGraph(RetrievalState)
     agent.add_node("route", route)
     agent.add_node("retrieve", retrieve)
@@ -309,7 +279,7 @@ def build_graph():
     return agent.compile()
 
 def run(question):
-    """The whole final state, for tracing and for notebook 04's accounting."""
+    """The whole final state, for tracing and for the cost accounting in evaluate."""
     return build_graph().invoke({"question": question, "attempts": 0,
                                  "chat_calls": 0, "decision_calls": 0})
 
@@ -326,7 +296,7 @@ def ask(question, verbose=False):
 # ---------------------------------------------------------------- the agent
 #
 # The graph above is the retrieval. The agent is what app.py serves: the same
-# create_agent from W03b with two tools, the graph behind search_filings and
+# create_agent with two tools, the graph behind search_filings and
 # the financials file behind financial_fact, and a checkpointer so the chat
 # remembers the conversation. agentui.py streams it, tool calls and all.
 

@@ -1,17 +1,12 @@
-"""The decision model. Nothing here is a TODO.
+"""The decision model.
 
 A chat model answers a question by writing. A decision model answers by
 picking: you hand it some state and a few typed questions, and it returns a
 probability for every allowed answer. No prose, no parsing, and it comes back
 in well under a second.
 
-That makes it the right tool for the two places in our graph where we need a
-verdict rather than text: which strategy a question needs, and whether the
-passages we found are enough. Those are decisions, not writing. The chat model
-still does the writing.
-
 Cloudflare hosts two of these, clef and clef-flash. Both speak the same API as
-Jev, the model that started this category. We use clef-flash.
+Jev, the model that started this category. I use clef-flash.
 """
 import functools
 import os
@@ -62,7 +57,7 @@ def  decide(state, questions, model=None):
     return body["result"]["answers"]
 
 
-# ----------------------------------------------------------- the two we use
+# ----------------------------------------------------------- the two I use
 
 SCOPES = {
     "specific": "one named company and one fiscal year",

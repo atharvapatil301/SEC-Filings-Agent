@@ -1,9 +1,10 @@
-"""Embeddings through Cloudflare Workers AI, for the deployed app. Given.
+"""Embeddings through Cloudflare Workers AI, for the deployed app.
 
 The index was built locally with Ollama's qwen3-embedding:0.6b. Cloudflare
 hosts the same model, and its vectors match Ollama's to four decimal places,
-so the app you deploy can search the index you already built. No re-indexing.
-Set EMBEDDINGS=cloudflare to use this; the default stays Ollama for local work.
+so the deployed app can search the locally built index without re-indexing.
+EMBEDDINGS=cloudflare (the default) uses this; EMBEDDINGS=ollama uses the
+local model instead.
 """
 import os
 
